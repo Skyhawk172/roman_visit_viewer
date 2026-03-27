@@ -1,0 +1,6 @@
+[project]
+name = "roman_visit_viewer"
+version = "0.1.0"
+
+[project.scripts]
+roman_visit_viewer = "roman_visit_viewer.roman_visit_viewer:main"
