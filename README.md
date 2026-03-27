@@ -1,7 +1,6 @@
 This tool is still in development and is subject to change.
 
-
-This tool parses Roman visit files (WFI Fundamental Observational Sequence template only) and plots the results. 
+This tool parses Roman visit files (WFI Fundamental Observational Sequence template only) and plots the results. Examples of visit files are not provided at this point in time until they are confirmed cleared.
 
 <img width="2000" height="900" alt="V0010701001001013001_all" src="https://github.com/user-attachments/assets/7873bf05-7f34-4828-b481-7f1a4aef709f" />
 
