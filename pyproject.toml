@@ -1,5 +1,10 @@
 [project]
 name = "roman_visit_viewer"
+description = "Parse and plot the contents of Roman visit files (.vst)"
+authors = [
+    { name = "Charles-Philippe Lajoie"}
+    ]
+
 version = "0.1.0"
 
 [project.scripts]

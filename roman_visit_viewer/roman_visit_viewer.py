@@ -19,6 +19,7 @@ from astropy.visualization import ImageNormalize, PercentileInterval, AsinhStret
 from astropy.io import fits
 import astropy.units as u
 from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
 
 import matplotlib.pyplot as plt 
 
@@ -37,6 +38,60 @@ import re, os
 # # Functions and Classes
 
 RSIAF = pysiaf.Siaf("Roman")
+
+def add_compass_lower_right(ax, wcs, size=8*u.arcmin, pad=0.05,
+                           color="white"):
+    """
+    Add N/E compass fixed to lower-right corner of a WCSAxes.
+    """
+
+    # -----------------------------
+    # 1. axes coords → pixel coords
+    # -----------------------------
+    x_ax = 1 - pad
+    y_ax = pad
+
+    x_pix, y_pix = ax.transAxes.transform((x_ax, y_ax))
+    x_pix, y_pix = ax.transData.inverted().transform((x_pix, y_pix))
+
+    # -----------------------------
+    # 2. pixel → sky coordinate
+    # -----------------------------
+    center = SkyCoord.from_pixel(x_pix, y_pix, wcs)
+
+    # -----------------------------
+    # 3. compute N and E directions
+    # -----------------------------
+    north = SkyCoord(center.ra, center.dec + size)
+
+    east = SkyCoord(
+        center.ra + size / np.cos(center.dec),
+        center.dec
+    )
+
+
+    # -----------------------------
+    # 4. draw arrows
+    # -----------------------------
+    trans = ax.get_transform("icrs")
+
+    #arrow_props = dict(arrowstyle='->', color=color, lw=2)
+    arrow_props = dict(arrowstyle='-|>', color=color, lw=1, shrinkA=0, shrinkB=0, alpha=0.5)
+    for tip in [north, east]:
+        ax.annotate("",
+            xy=(tip.ra.deg, tip.dec.deg),
+            xytext=(center.ra.deg, center.dec.deg),
+            arrowprops=arrow_props,
+            xycoords=trans,
+            textcoords=trans)
+    
+
+    # labels
+    ax.text(north.ra.deg, north.dec.deg, "N", ha='center', va='bottom', alpha=0.5,
+            color=color, transform=trans)
+
+    ax.text(east.ra.deg, east.dec.deg, "E", ha='right', va='center', alpha=0.5,
+            color=color, transform=trans)
 
 def roman_attitude(q):
     '''
@@ -150,6 +205,8 @@ def plot_all_exposures(parser, exp_num, image_hdu, wcs, fig=None, ax=None, **kwa
 
     norm = ImageNormalize(image_hdu[0].data, interval=PercentileInterval(99.99), stretch=AsinhStretch(a=0.0001))    
     ax.imshow(image_hdu[0].data, cmap='magma', norm=norm, origin='lower', zorder=-50)  # negative zorder to be below pysiaf aperture fill zorder   
+
+    add_compass_lower_right(ax, wcs)
 
     overlay = ax.get_coords_overlay('icrs')
     overlay.grid(color='white', ls='dotted', alpha=0.5)
@@ -332,6 +389,8 @@ class Exposure:
     
         ax.set_xlabel("ra")
         ax.set_ylabel("dec")
+
+        add_compass_lower_right(ax, wcs)
 
         if savefig:
             savename = self.visit_name.replace(".vst", f"_exp{self.exp_id+1:02d}.png")
