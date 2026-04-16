@@ -308,7 +308,7 @@ class Exposure:
             self._radec = roman_attitude(self.quaternion)
         return self._radec
 
-    def plot(self, fig=None, ax=None, ndithers=None, output_dir=os.getcwd()):
+    def plot(self, fig=None, ax=None, ndithers=None, output_dir=os.getcwd(), savefig=False):
         
         ra_v1, dec_v1, v3pa_v1 = self.radec
 
@@ -383,9 +383,9 @@ class Exposure:
 
         add_compass_lower_right(ax, wcs)
 
-        savename = self.visit_name.replace(".vst", f"_exp{self.exp_id+1:02d}.png")
-        fig.savefig( os.path.join(output_dir, savename) )
-
+        if savefig:
+            savename = self.visit_name.replace(".vst", f"_exp{self.exp_id+1:02d}.png")
+            fig.savefig( os.path.join(output_dir, savename) )
 
 
 class ExposureParser:
@@ -500,25 +500,19 @@ def main():
 
     argparser = argparse.ArgumentParser(description="Parse Roman visit file and plot exposures")
 
-    # Create a mutually exclusive group so -f and -d can't be used together
-    group = argparser.add_mutually_exclusive_group(required=True)
-    group.add_argument("-f", "--file", metavar="FILE", help="Path to a single file to process")
-    group.add_argument("-d", "--dir", metavar="DIR", help="Path to a directory of files to process")
-
+    argparser.add_argument("inputs", metavar="FILE", help="Directory of files or path to a single file to process")
     argparser.add_argument("-o", "--output_dir", default=os.getcwd(), help="Output directory (Default: current directory)")
     
     args = argparser.parse_args()
 
-    if args.file:
-        if not os.path.isfile(args.file):
-            argparser.error(f"File not found: {args.file}")
-        all_files = [ Path(args.file) ]
-        
-    elif args.dir:
-        if not os.path.isdir(args.dir):
-            argparser.error(f"Directory not found: {args.dir}")
-
-        all_files = glob.glob( os.path.join(args.dir, "*.vst") )
+    if os.path.isfile(args.inputs):
+        all_files = [ Path(args.inputs) ]
+    elif os.path.isdir(args.inputs):
+        all_files = glob.glob( os.path.join(args.inputs, "*.vst") )
+        if not all_files:                                            
+            argparser.error("  No .vst files found in directory")
+    else:
+        argparser.error(f"File or Directory not found: {args.inputs}")
 
     for ivst in all_files:
         visit_path = Path(ivst)
