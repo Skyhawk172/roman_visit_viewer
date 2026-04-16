@@ -319,7 +319,8 @@ class Exposure:
         ra_wfi, dec_wfi = pysiaf.rotations.tel_to_sky(att_mat, wfi_cen.V2Ref, wfi_cen.V3Ref)
         ra_wfi = ra_wfi.to(u.deg).value
         dec_wfi= dec_wfi.to(u.deg).value
-        
+        v3pa_wfi = pysiaf.rotations.posangle(att_mat, wfi_cen.V2Ref, wfi_cen.V3Ref)
+
         image_hdu = retrieve_2mass_image(ra_wfi, dec_wfi, self.visit_name, redownload=False)
         wcs = WCS(image_hdu[0].header)
 
@@ -332,11 +333,13 @@ class Exposure:
 
         norm = ImageNormalize(image_hdu[0].data, interval=PercentileInterval(99.99), stretch=AsinhStretch(a=0.0001))    
         ax.imshow(image_hdu[0].data, cmap='magma', norm=norm, origin='lower', zorder=-50)  # negative zorder to be below pysiaf aperture fill zorder    
-        
 
+        
+        ax.scatter(ra_wfi, dec_wfi, marker='x', s=30, color='yellow', transform=ax.get_transform('icrs'), zorder=99)
         ax.scatter(ra_v1, dec_v1, marker='x', s=30, color='white', transform=ax.get_transform('icrs'))
         plt.annotate( "V1 axis", xy=(ra_v1, dec_v1), xytext=(-18,7), color='white',
                       xycoords=ax.get_transform('icrs'), textcoords="offset points")
+        
         
         n_gs = 0
         for isca in range(1, 19):
@@ -362,11 +365,11 @@ class Exposure:
             ax.text(0.025, 0.975, f"{self.visit_name.strip(".vst"):} - exposure {self.exp_id+1:}", color='white', transform=ax.transAxes,
                fontsize=12, verticalalignment='top')
 
-        ax.text(0.025, 0.94, f"RA@V1     = {ra_v1:5.2f}°", color='white', transform=ax.transAxes,
+        ax.text(0.025, 0.94, f"RA@WFI_CEN     = {ra_wfi:5.2f}°", color='white', transform=ax.transAxes,
                fontsize=12, verticalalignment='top')
-        ax.text(0.025, 0.91, f"Dec@V1   = {dec_v1:5.2f}°", color='white', transform=ax.transAxes,
+        ax.text(0.025, 0.91, f"Dec@WFI_CEN   = {dec_wfi:5.2f}°", color='white', transform=ax.transAxes,
                fontsize=12, verticalalignment='top')
-        ax.text(0.025, 0.88, f"V3PA@V1 = {v3pa_v1:5.2f}°", color='white', transform=ax.transAxes,
+        ax.text(0.025, 0.88, f"V3PA@WFI_CEN = {v3pa_wfi:5.2f}°", color='white', transform=ax.transAxes,
                fontsize=12, verticalalignment='top')
         
         ax.text(0.025, 0.83, f"{self.guide_mode:} - {n_gs:} guide stars", color='white', transform=ax.transAxes,
