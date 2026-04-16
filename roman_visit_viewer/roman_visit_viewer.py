@@ -279,7 +279,7 @@ def plot_manager(parser, exp_num=1, output_dir=os.getcwd()):
         fig = plt.figure(figsize=(20,9), dpi=100)
         axes = [plt.subplot(projection=wcs)]
 
-    exposure.plot(fig, axes[0], ndithers=ndithers)
+    exposure.plot(fig, axes[0], ndithers=ndithers, output_dir=output_dir)
         
     if ndithers > 1: 
         plot_all_exposures(parser, exp_num, image_hdu, wcs, fig=None, ax=axes[1])
