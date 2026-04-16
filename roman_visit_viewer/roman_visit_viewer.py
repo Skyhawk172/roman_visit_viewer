@@ -32,7 +32,7 @@ import pysiaf
 from dataclasses import dataclass, field
 from typing import Optional
 
-import re, os
+import glob, os, re
 
 
 # # Functions and Classes
@@ -157,15 +157,16 @@ def retrieve_2mass_image(ra, dec, visitname, verbose=True, redownload=False, fil
 
     """
 
+    cache_dir = os.path.join(os.path.dirname(__file__), "image_cache")
+    if not os.path.isdir(cache_dir):
+        os.mkdir(cache_dir)
+    
     hips_catalog = f'CDS/P/2MASS/{filter}'  # also try 2MASS/color
     width = 1024
     height = 1024
 
-    if fov!= 0.35:
-        # if a non-default FOV is used, save that specially
-        img_fn = os.path.join(f'img_2mass_{filter}_{visitname.strip(".vst")}_fov{fov}.fits')
-    else:
-        img_fn = os.path.join(f'img_2mass_{filter}_{visitname.strip(".vst")}.fits')
+
+    img_fn = os.path.join(cache_dir, f'img_2mass_{filter}_{visitname.strip(".vst")}_fov{fov}.fits')
 
     if not os.path.exists(img_fn) or redownload:
 
@@ -232,7 +233,7 @@ def plot_all_exposures(parser, exp_num, image_hdu, wcs, fig=None, ax=None, **kwa
 
 
 
-def plot_manager(parser, exp_num=1, savefig=True):
+def plot_manager(parser, exp_num=1, output_dir=os.getcwd()):
     '''
     Plot content parsed from visit file.
     If multiple exposures (a.k.a. dithers), will plot two subplots, else just one.
@@ -278,14 +279,13 @@ def plot_manager(parser, exp_num=1, savefig=True):
         fig = plt.figure(figsize=(20,9), dpi=100)
         axes = [plt.subplot(projection=wcs)]
 
-    exposure.plot(fig, axes[0], savefig=False, ndithers=ndithers)
+    exposure.plot(fig, axes[0], ndithers=ndithers, output_dir=output_dir)
         
     if ndithers > 1: 
         plot_all_exposures(parser, exp_num, image_hdu, wcs, fig=None, ax=axes[1])
 
-    if savefig:
-        savename = parser.visit_name.replace(".vst", "_all.png")
-        fig.savefig(savename)
+    savename = parser.visit_name.replace(".vst", f"_{exp_num:02d}.png")
+    fig.savefig( os.path.join(output_dir, savename) )
 
 
 
@@ -308,7 +308,7 @@ class Exposure:
             self._radec = roman_attitude(self.quaternion)
         return self._radec
 
-    def plot(self, fig=None, ax=None, savefig=True, ndithers=None):
+    def plot(self, fig=None, ax=None, ndithers=None, output_dir=os.getcwd(), savefig=False):
         
         ra_v1, dec_v1, v3pa_v1 = self.radec
 
@@ -385,8 +385,7 @@ class Exposure:
 
         if savefig:
             savename = self.visit_name.replace(".vst", f"_exp{self.exp_id+1:02d}.png")
-            fig.savefig(savename)
-
+            fig.savefig( os.path.join(output_dir, savename) )
 
 
 class ExposureParser:
@@ -500,29 +499,32 @@ class VisitFileParser:
 def main():
 
     argparser = argparse.ArgumentParser(description="Parse Roman visit file and plot exposures")
-            
-    argparser.add_argument("visit_file", help="Full path to .vst visit file")
-    argparser.add_argument("--exp_num", type=int, default=1, help="Exposure number to plot (default: 1)")
-    argparser.add_argument("--plot_all", action="store_true", help="Plot and save every exposure instead (default: False)")
 
+    argparser.add_argument("inputs", metavar="FILE", help="Directory of files or path to a single file to process")
+    argparser.add_argument("-o", "--output_dir", default=os.getcwd(), help="Output directory (Default: current directory)")
+    
     args = argparser.parse_args()
 
-    visit_path = Path(args.visit_file)
-    if not visit_path.exists():
-        raise FileNotFoundError(f"{visit_path} not found")
-
-    
-    visit_parser = VisitFileParser(str(visit_path))
-    
-    plot_all = args.plot_all
-
-    if plot_all:
-        for block in visit_parser:
-            block.plot( savefig=True )
+    if os.path.isfile(args.inputs):
+        all_files = [ Path(args.inputs) ]
+    elif os.path.isdir(args.inputs):
+        all_files = glob.glob( os.path.join(args.inputs, "*.vst") )
+        if not all_files:                                            
+            argparser.error("  No .vst files found in directory")
     else:
-        plot_manager( visit_parser, exp_num = args.exp_num, savefig=True )
+        argparser.error(f"File or Directory not found: {args.inputs}")
 
+    for ivst in all_files:
+        visit_path = Path(ivst)
+        visit_parser = VisitFileParser(str(visit_path))
+        nexp = len( list(visit_parser) )
+        print(f"Processing file {ivst:}")
 
+        for iexp in range(1, nexp+1):
+            print(f"   Processing exposure {iexp:}")
+            plot_manager( visit_parser, exp_num = iexp, output_dir=args.output_dir )
+
+ 
 
 if __name__ == "__main__":
     main()
