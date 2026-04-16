@@ -9,4 +9,6 @@ Installation:
 - pip install -e .
 
 Command-line execution:
-- roman_visit_viewer Path/to/visit/file
+- roman_visit_viewer /Path/to/visit/files
+
+Note that you can specify either a .vst file or a directory containing .vst files, and the script will process them all at once. 
