@@ -49,17 +49,17 @@ def add_compass_lower_right(ax, wcs, size=8*u.arcmin, pad=0.05,
     x_ax = 1 - pad
     y_ax = pad
 
+    x_disp, y_disp = ax.transAxes.transform((x_ax, y_ax))
+    x_pix, y_pix = ax.transData.inverted().transform((x_disp, y_disp))
 
-    x_pix, y_pix = ax.transAxes.transform((x_ax, y_ax))
-    x_pix, y_pix = ax.transData.inverted().transform((x_pix, y_pix))
-    
     # Pixel → sky coordinate
     center = SkyCoord.from_pixel(x_pix, y_pix, wcs)
 
-    # Compute N and E directions
-    north = SkyCoord(center.ra, center.dec + size)
-
-    east = SkyCoord( center.ra + size / np.cos(center.dec), center.dec)
+    # Offset by `size` toward North (position angle 0 deg)
+    # and East (position angle 90 deg).
+    center = center.icrs
+    north = center.directional_offset_by(0 * u.deg, size)
+    east = center.directional_offset_by(90 * u.deg, size)
 
     # Draw arrows
     trans = ax.get_transform("icrs")
@@ -233,7 +233,7 @@ def plot_all_exposures(parser, exp_num, image_hdu, wcs, fig=None, ax=None, **kwa
 
 
 
-def plot_manager(parser, exp_num=1, output_dir=os.getcwd()):
+def plot_manager(parser, exp_num=1, output_dir=os.getcwd(), coord_sys='icrs'):
     '''
     Plot content parsed from visit file.
     If multiple exposures (a.k.a. dithers), will plot two subplots, else just one.
@@ -269,7 +269,7 @@ def plot_manager(parser, exp_num=1, output_dir=os.getcwd()):
     ra_wfi = ra_wfi.to(u.deg).value
     dec_wfi= dec_wfi.to(u.deg).value
     
-    image_hdu = retrieve_2mass_image(ra_wfi, dec_wfi, exposure.visit_name, redownload=False)
+    image_hdu = retrieve_2mass_image(ra_wfi, dec_wfi, exposure.visit_name, coord_sys=coord_sys, redownload=False)
 
     wcs = WCS(image_hdu[0].header)
     
@@ -309,7 +309,7 @@ class Exposure:
             self._radec = roman_attitude(self.quaternion)
         return self._radec
 
-    def plot(self, fig=None, ax=None, ndithers=None, output_dir=os.getcwd(), savefig=False):
+    def plot(self, fig=None, ax=None, ndithers=None, output_dir=os.getcwd(), coord_sys='icrs', savefig=False):
         
         ra_v1, dec_v1, v3pa_v1 = self.radec
 
@@ -322,7 +322,7 @@ class Exposure:
         dec_wfi= dec_wfi.to(u.deg).value
         v3pa_wfi = pysiaf.rotations.posangle(att_mat, wfi_cen.V2Ref, wfi_cen.V3Ref)
 
-        image_hdu = retrieve_2mass_image(ra_wfi, dec_wfi, self.visit_name, redownload=False)
+        image_hdu = retrieve_2mass_image(ra_wfi, dec_wfi, self.visit_name, coord_sys=coord_sys, redownload=False)
         wcs = WCS(image_hdu[0].header)
 
         if not ax:
