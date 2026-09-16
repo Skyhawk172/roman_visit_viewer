@@ -136,7 +136,7 @@ def roman_attitude(q):
 
 
 
-def retrieve_2mass_image(ra, dec, visitname, verbose=True, redownload=False, filter='J', fov=1.8):
+def retrieve_2mass_image(ra, dec, visitname, filter='J', fov=1.8, coord_sys='icrs', redownload=False, verbose=True):
     """Obtain from Aladin a 2MASS image for the pointing location of a JWST visit
 
     Uses HIPS2FITS service; see http://alasky.u-strasbg.fr/hips-image-services/hips2fits
@@ -157,7 +157,7 @@ def retrieve_2mass_image(ra, dec, visitname, verbose=True, redownload=False, fil
 
     """
 
-    cache_dir = os.path.join(os.path.dirname(__file__), "image_cache")
+    cache_dir = os.path.join(os.getcwd(), "image_cache")
     if not os.path.isdir(cache_dir):
         os.mkdir(cache_dir)
     
@@ -166,13 +166,13 @@ def retrieve_2mass_image(ra, dec, visitname, verbose=True, redownload=False, fil
     height = 1024
 
 
-    img_fn = os.path.join(cache_dir, f'img_2mass_{filter}_{visitname.strip(".vst")}_fov{fov}.fits')
+    img_fn = os.path.join(cache_dir, f'img_2mass_{filter}_{visitname.strip(".vst")}_fov{fov}_{coord_sys}.fits')
 
     if not os.path.exists(img_fn) or redownload:
 
         # optional / TBD - add PA into this query?
         # rotation_angle=90.0
-        url = f'http://alasky.u-strasbg.fr/hips-image-services/hips2fits?hips={(hips_catalog)}&width={width}&height={height}&fov={fov}&projection=TAN&coordsys=icrs&ra={ra}&dec={dec}'
+        url = f'http://alasky.u-strasbg.fr/hips-image-services/hips2fits?hips={(hips_catalog)}&width={width}&height={height}&fov={fov}&projection=TAN&coordsys={coord_sys}&ra={ra}&dec={dec}'
 
         if verbose:
             print(f"Retrieving 2MASS image from Aladin near ra={ra} & dec={dec}...")
@@ -270,6 +270,7 @@ def plot_manager(parser, exp_num=1, output_dir=os.getcwd()):
     dec_wfi= dec_wfi.to(u.deg).value
     
     image_hdu = retrieve_2mass_image(ra_wfi, dec_wfi, exposure.visit_name, redownload=False)
+
     wcs = WCS(image_hdu[0].header)
     
     if ndithers > 1:
