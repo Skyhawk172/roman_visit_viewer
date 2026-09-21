@@ -135,6 +135,50 @@ def roman_attitude(q):
     return np.degrees(ra), np.degrees(dec), pa_v3
 
 
+def roman_attitude_inverse(ra, dec, pa_v3):
+    """
+    Inverse of roman_attitude().
+    Returns quaternions [x, y, z, w], scalar-last.
+    """
+
+    ra = np.radians(ra)
+    dec = np.radians(dec)
+    pa = np.radians(pa_v3)
+
+    # V1 = pointing direction
+    V1 = np.array([
+        np.cos(dec) * np.cos(ra),
+        np.cos(dec) * np.sin(ra),
+        np.sin(dec)
+    ])
+
+    # North and East at V1
+    Z = np.array([0., 0., 1.])
+
+    N = Z - np.dot(Z, V1) * V1
+    N /= np.linalg.norm(N)
+
+    E = np.cross(N, V1)
+
+    # V3 from PA
+    V3 = np.cos(pa) * N + np.sin(pa) * E
+
+    # Complete right-handed basis
+    V2 = np.cross(V3, V1)
+
+    # This is the matrix whose columns your original
+    # function interprets as V1, V2, V3.
+    R = np.column_stack((V1, V2, V3))
+
+    # Quaternion from R, using the convention in your function
+    w = 0.5 * np.sqrt(1 + np.trace(R))
+
+    x = (R[2, 1] - R[1, 2]) / (4 * w)
+    y = (R[0, 2] - R[2, 0]) / (4 * w)
+    z = (R[1, 0] - R[0, 1]) / (4 * w)
+
+    return np.array([x, y, z, w])
+
 
 def retrieve_2mass_image(ra, dec, visitname, filter='J', fov=1.8, coord_sys='icrs', redownload=False, verbose=True):
     """Obtain from Aladin a 2MASS image for the pointing location of a JWST visit
@@ -286,7 +330,7 @@ def plot_manager(parser, exp_num=1, output_dir=os.getcwd(), coord_sys='icrs'):
         plot_all_exposures(parser, exp_num, image_hdu, wcs, fig=None, ax=axes[1])
 
     savename = parser.visit_name.replace(".vst", f"_{exp_num:02d}.png")
-    fig.savefig( os.path.join(output_dir, savename) )
+    fig.savefig( os.path.join(output_dir, savename), bbox_inches="tight", pad_inches=0 )
 
 
 
